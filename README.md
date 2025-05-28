@@ -43,7 +43,7 @@ docker run --rm -it -d --name docker-remote \
     -e DOCKER_REMOTE_IP_ADDRESS=<SERVER_IP> \
     -v ./.out:/etc/docker/certs.d \
     -v ./tools:/tools \
-    eliasmeireles/docker-remote:latest
+    ghcr.io/eliasmeireles/docker-remote:latest
 docker exec -it docker-remote /bin/bash
 ```
 
@@ -56,7 +56,7 @@ docker run --rm -it -d --name docker-remote \
     -e DOCKER_HOST="tcp://custom-docker-server:2376" \
     -v /custom/path/certs:/etc/docker/certs.d \
     -v ./tools:/tools \
-    eliasmeireles/docker-remote:latest
+    ghcr.io/eliasmeireles/docker-remote:latest
 docker exec -it docker-remote /bin/bash
 ```
 
