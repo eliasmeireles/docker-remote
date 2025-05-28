@@ -1,4 +1,4 @@
-FROM eliasmeireles/dev-tools:v1
+FROM ghcr.io/eliasmeireles/dev-tools:latest
 
 ENV DOCKER_TLS_VERIFY=1
 ENV DOCKER_CERT_PATH=/etc/docker/certs.d
@@ -18,7 +18,6 @@ RUN curl -L "https://github.com/docker/compose/releases/download/v2.9.0/docker-c
 RUN chmod +x /usr/bin/docker-compose
 RUN echo "Docker and Docker Compose installed successfully"
 RUN mkdir -p /ci/
-RUN apt install -y make
 
 # Copy the start-up script
 COPY ci/deployment /usr/bin/deployment
