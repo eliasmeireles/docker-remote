@@ -1,0 +1,93 @@
+#!/bin/bash
+
+set -e
+
+# Function to display help message
+show_help() {
+    echo "Usage: $0 -c <container> -u <user> -d <dbname>"
+    echo
+    echo "Options:"
+    echo "  -c, --container  The name of the Docker container running PostgreSQL."
+    echo "  -u, --user       The PostgreSQL username."
+    echo "  -d, --dbname     The name of the database to dump."
+    echo "  -h, --help       Show this help message and exit."
+}
+
+# Initialize variables
+container=""
+user=""
+dbname=""
+
+# Parse named arguments
+while getopts "c:u:d:h" opt; do
+    case ${opt} in
+        c )
+            container=$OPTARG
+            ;;
+        u )
+            user=$OPTARG
+            ;;
+        d )
+            dbname=$OPTARG
+            ;;
+        h )
+            show_help
+            exit 0
+            ;;
+        \? )
+            echo "Invalid option: -$OPTARG" 1>&2
+            show_help
+            exit 1
+            ;;
+        : )
+            echo "Invalid option: -$OPTARG requires an argument" 1>&2
+            show_help
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND -1))
+
+# Validate that all required arguments are provided
+if [ -z "$container" ] || [ -z "$user" ] || [ -z "$dbname" ]; then
+    echo "Error: Missing required arguments."
+    show_help
+    exit 1
+fi
+
+# Validate container name (simple regex for container name)
+if ! echo "$container" | grep -Eq '^[a-zA-Z0-9._-]+$'; then
+    echo "Error: Invalid container name '$container'. It must only contain letters, numbers, dots, underscores, or dashes."
+    exit 1
+fi
+
+# Validate user (must be non-empty)
+if [ -z "$user" ]; then
+    echo "Error: PostgreSQL user cannot be empty."
+    exit 1
+fi
+
+# Validate database name (must be non-empty)
+if [ -z "$dbname" ]; then
+    echo "Error: Database name cannot be empty."
+    exit 1
+fi
+
+# Generate dump file name
+dump_file="/${dbname}-dump-$(date +"%Y-%m-%d-%H-%M").dump"
+
+# Execute pg_dump inside the container
+docker exec -t "$container" pg_dump -h 127.0.0.1 -p 5432 -U "$user" -F c -b -v -f "$dump_file" "$dbname"
+
+# Create local directory to store the dump file
+mkdir -p ./database-dump/ || true
+
+# Copy the dump file from the container to the host
+docker cp "$container:$dump_file" ./database-dump/"$(basename "$dump_file")"
+
+echo "Database dump saved to ./database-dump/$(basename "$dump_file")"
+
+echo "Restore it with
+postgresql-dump-restore -c $container -u $user -d $dbname -f .$dump_file"
+
+echo "postgresql-dump-restore -c $container -u $user -d $dbname -f .$dump_file" > "./database-dump/${dump_file}_restore_command".txt

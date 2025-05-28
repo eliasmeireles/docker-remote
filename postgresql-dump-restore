@@ -1,0 +1,96 @@
+#!/bin/sh
+
+set -e 
+
+# Function to display help message
+show_help() {
+    echo "Usage: $0 -c <container> -u <user> -d <dbname> -f <dumpfile>"
+    echo
+    echo "Options:"
+    echo "  -c, --container  The name of the Docker container running PostgreSQL."
+    echo "  -u, --user       The PostgreSQL username."
+    echo "  -d, --dbname     The name of the database to restore into."
+    echo "  -f, --file       The path to the dump file to restore."
+    echo "  -h, --help       Show this help message and exit."
+}
+
+# Initialize variables
+container=""
+user=""
+dbname=""
+dumpfile=""
+
+# Parse named arguments
+while getopts "c:u:d:f:h" opt; do
+    case ${opt} in
+        c )
+            container=$OPTARG
+            ;;
+        u )
+            user=$OPTARG
+            ;;
+        d )
+            dbname=$OPTARG
+            ;;
+        f )
+            dumpfile=$OPTARG
+            ;;
+        h )
+            show_help
+            exit 0
+            ;;
+        \? )
+            echo "Invalid option: -$OPTARG" 1>&2
+            show_help
+            exit 1
+            ;;
+        : )
+            echo "Invalid option: -$OPTARG requires an argument" 1>&2
+            show_help
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND -1))
+
+# Validate that all required arguments are provided
+if [ -z "$container" ] || [ -z "$user" ] || [ -z "$dbname" ] || [ -z "$dumpfile" ]; then
+    echo "Error: Missing required arguments."
+    show_help
+    exit 1
+fi
+
+# Validate container name (simple regex for container name)
+if ! echo "$container" | grep -Eq '^[a-zA-Z0-9._-]+$'; then
+    echo "Error: Invalid container name '$container'. It must only contain letters, numbers, dots, underscores, or dashes."
+    exit 1
+fi
+
+# Validate user (must be non-empty)
+if [ -z "$user" ]; then
+    echo "Error: PostgreSQL user cannot be empty."
+    exit 1
+fi
+
+# Validate database name (must be non-empty)
+if [ -z "$dbname" ]; then
+    echo "Error: Database name cannot be empty."
+    exit 1
+fi
+
+# Check if the dump file exists and is a regular file
+if [ ! -f "$dumpfile" ]; then
+    echo "Error: Dump file '$dumpfile' not found or is not a regular file."
+    exit 1
+fi
+
+# Copy the dump file from the host to the container
+docker cp "$dumpfile" "$container:/restore.dump"
+
+# Execute pg_restore inside the container
+docker exec -t "$container" pg_restore -h 127.0.0.1 -p 5432 -U "$user" -d "$dbname" -v /restore.dump
+
+# Remove the dump file from the container
+docker exec -t "$container" rm /restore.dump
+
+echo "Database restored from $dumpfile into $dbname in container $container"
