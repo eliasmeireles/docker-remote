@@ -1,8 +1,3 @@
-Here’s an improved version of your `README.md` with better clarity, structure, and grammar while preserving all key
-information:
-
----
-
 # Docker Remote Access with TLS Configuration
 
 This guide explains how to configure a Docker server for secure remote access using TLS.
